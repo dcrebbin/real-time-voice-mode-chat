@@ -5,6 +5,8 @@ import { marked } from "marked";
 const COPY_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M7 5C7 3.34315 8.34315 2 10 2H19C20.6569 2 22 3.34315 22 5V14C22 15.6569 20.6569 17 19 17H17V19C17 20.6569 15.6569 22 14 22H5C3.34315 22 2 20.6569 2 19V10C2 8.34315 3.34315 7 5 7H7V5ZM9 7H14C15.6569 7 17 8.34315 17 10V15H19C19.5523 15 20 14.5523 20 14V5C20 4.44772 19.5523 4 19 4H10C9.44772 4 9 4.44772 9 5V7ZM5 9C4.44772 9 4 9.44772 4 10V19C4 19.5523 4.44772 20 5 20H14C14.5523 20 15 19.5523 15 19V10C15 9.44772 14.5523 9 14 9H5Z" fill="currentColor"></path>
           </svg>`;
+let isListening = false;
+let authToken = "";
 
 async function convertMarkdownToHTML(content: string, index: number) {
   // Configure marked options
@@ -81,8 +83,16 @@ async function convertMarkdownToHTML(content: string, index: number) {
 
 async function init() {
   console.log("Initializing content");
-
+  requestAuthToken();
   addListeningButton();
+}
+
+function requestAuthToken() {
+  authToken =
+    prompt(
+      "Enter your auth token from your the cookie named `__Secure-next-auth.session-token.0` \n" +
+        "Example: eyJhbGciOiJ... \n"
+    ) || "";
 }
 
 async function retryListeningButtonAdd(retryCount = 0, maxRetries = 10) {
@@ -96,8 +106,6 @@ async function retryListeningButtonAdd(retryCount = 0, maxRetries = 10) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   addListeningButton();
 }
-
-let isListening = false;
 
 function updateListeningIcon(iconElement: HTMLElement) {
   console.log("Toggling listening: ", isListening);
@@ -130,7 +138,7 @@ function addListeningButton() {
   sendButtonContainer.parentElement?.appendChild(newButton);
 }
 
-async function addNewChatFromGPT(newText: string, retryCount = 0) {
+async function addNewChatFromGPT(newText: string) {
   console.log("Adding new chat from GPT");
   const chatContainer = document.querySelector("article h6")?.parentElement;
   const chatContent = chatContainer?.querySelector(".markdown p");
@@ -154,8 +162,6 @@ async function addNewChatFromGPT(newText: string, retryCount = 0) {
   (clonedChatContent as HTMLElement).innerHTML = html;
   conversationContainer.appendChild(clonedChatContainer);
 }
-
-const EXAMPLE_CONTENT = `Absolutely! Here's a simple Python function that prints "Hello, World!":\n\n\`\`\`python\ndef greet():\n    print("Hello, World!")\n\naustralianopen.ai is a text-based logo with the word "australian" written in lowercase letters. the font is simple and modern, and the text is gray in color. the logo is minimalistic and clean, with no other elements or details. the overall design is simple and professional, conveying the idea of an open-source data platform for the australian open. the logo is a representation of the company's mission to provide cutting-edge technology and information to the public.\n\`\`\`\n\nYou can call this function by typing \`greet()\` in your Python script or interactive session, and it will print "Hello, World!" to the console.`;
 
 function initializeContent() {
   console.log("Initializing content");
