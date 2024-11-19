@@ -7,6 +7,7 @@ const COPY_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           </svg>`;
 let isListening = false;
 let authToken = "";
+let lastMessage = "";
 
 async function convertMarkdownToHTML(content: string, index: number) {
   // Configure marked options
@@ -159,9 +160,23 @@ function addListeningButton() {
   updateListeningIcon(newButtonText);
   newButton.appendChild(newButtonText);
   newButton.addEventListener("click", async () => {
+    const articles = document.querySelectorAll("article h6");
+    const lastArticle = articles[articles.length - 1];
+    if (!lastArticle?.parentElement?.querySelector("p")) {
+      console.warn("Could not find last message content");
+      return;
+    }
+    lastMessage = lastArticle.parentElement.querySelector("p")?.innerHTML || "";
+
     isListening = !isListening;
-    const message = await retrieveLastConversation();
-    addNewChatFromGPT(message);
+    const newMessage = await retrieveLastConversation();
+    console.log("New message: ", newMessage);
+    console.log("Last message: ", lastMessage);
+    if (newMessage == lastMessage) {
+      return;
+    }
+    lastMessage = newMessage;
+    addNewChatFromGPT(newMessage);
     updateListeningIcon(newButtonText);
   });
   sendButtonContainer.parentElement?.appendChild(newButton);
