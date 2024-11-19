@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Voice Mode Chat",
+  "description": "Adds chat retrieval to ChatGPT to allow you to view chats from Advanced Voice Mode.",
+  "version": "0.0.1",
+  "author": "Devon Crebbin",
+  "action": {
+    "default_popup": "src/pages/popup/popup.html",
+    "default_icon": {
+      "32": "icon32.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "19": "icon19.png",
+    "32": "icon32.png",
+    "38": "icon38.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.chatgpt.com/*",
+        "https://chatgpt.com/*",
+        "https://chat.com/*",
+        "https://www.chat.com/*"
+      ],
+      "js": [
+        "src/pages/content/index.tsx"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon128.png",
+        "icon48.png",
+        "icon38.png",
+        "icon32.png",
+        "icon19.png",
+        "icon16.png",
+        "ai-icon.png"
+      ],
+      "matches": [
+        "https://*.chat.com/*",
+        "https://*.chatgpt.com/*"
+      ]
+    }
+  ]
+}
