@@ -87,6 +87,34 @@ async function init() {
   addListeningButton();
 }
 
+async function retrieveLastConversation() {
+  const conversationId = location.href.split("/c/")[1];
+  if (!conversationId) {
+    console.log("No conversation ID found");
+    return;
+  }
+  const res = await fetch(
+    `https://chatgpt.com/backend-api/conversation/${conversationId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    }
+  );
+  const data = await res.json();
+
+  const filteredMapping = Object.entries(data.mapping).filter(
+    ([key, value]: [string, any]) =>
+      value?.message?.author?.role === "assistant"
+  );
+
+  const entries = Object.entries(filteredMapping);
+  const lastEntry: [string, any] = entries[entries.length - 1];
+  const entry = lastEntry[1][1];
+  const message = entry.message.content.parts[0].text;
+  return message;
+}
+
 function requestAuthToken() {
   authToken =
     prompt(
@@ -130,9 +158,10 @@ function addListeningButton() {
   const newButtonText = document.createElement("p");
   updateListeningIcon(newButtonText);
   newButton.appendChild(newButtonText);
-  newButton.addEventListener("click", () => {
+  newButton.addEventListener("click", async () => {
     isListening = !isListening;
-    addNewChatFromGPT(`# Hello how are you \n um yeah good lol, wbu?`);
+    const message = await retrieveLastConversation();
+    addNewChatFromGPT(message);
     updateListeningIcon(newButtonText);
   });
   sendButtonContainer.parentElement?.appendChild(newButton);
