@@ -19,7 +19,7 @@ async function convertMarkdownToHTML(content: string, index: number) {
       langPrefix: "hljs language-",
       highlight(code: string, lang: string) {
         const language = hljs.getLanguage(lang) ? lang : "plaintext";
-        return hljs.highlight(code, { language }).value;
+        return hljs.highlight(code, { language }).value; // Removed trim() to preserve whitespace
       },
     }),
   });
@@ -39,11 +39,11 @@ async function convertMarkdownToHTML(content: string, index: number) {
         <div class="flex absolute top-0 w-full items-center text-token-text-secondary px-4 py-2 text-xs font-sans justify-between rounded-t-md h-9 bg-token-sidebar-surface-primary dark:bg-token-main-surface-secondary select-none">
           <p>${lang || ""}</p>
           <button id="${index}-copy-button" class="flex gap-1 items-center select-none py-1">
-            <span>Copy code</span>
-             ${COPY_ICON}
+          ${COPY_ICON}
+          <span>Copy code</span>
           </button>
         </div>
-        <div class="overflow-y-auto p-4" dir="ltr">
+        <div class="overflow-y-auto p-4 flex" dir="ltr">
           <code class="!whitespace-pre hljs language-${lang}" id="${index}-code">${text}</code>
         </div>
       </div>
@@ -58,9 +58,9 @@ async function convertMarkdownToHTML(content: string, index: number) {
         copyButton.addEventListener("click", () => {
           console.log(`Copying code from element ${index}`);
           navigator.clipboard.writeText(codeElement.textContent || "");
-          copyButton.innerHTML = "<span>Copied!</span>" + COPY_ICON;
+          copyButton.innerHTML = COPY_ICON + "<span>Copied!</span>";
           setTimeout(() => {
-            copyButton.innerHTML = "<span>Copy code</span>" + COPY_ICON;
+            copyButton.innerHTML = COPY_ICON + "<span>Copy code</span>";
           }, 1000);
         });
 
@@ -247,6 +247,7 @@ function addListeningButton() {
     void retryListeningButtonAdd();
     return;
   }
+
   const newButton = sendButton.cloneNode(true) as HTMLElement;
   newButton.style.opacity = "1";
   newButton.removeAttribute("disabled");
@@ -261,6 +262,7 @@ function addListeningButton() {
     updateListeningIcon(newButtonText);
 
     if (!currentConversationId) {
+      await chrome.storage.sync.set({ onLatestConversationPage: false });
       if (isListening) {
         await checkForNewlyCreatedConversations();
         checkForNewlyCreatedConversationsInterval = setInterval(
@@ -273,21 +275,29 @@ function addListeningButton() {
       return;
     }
 
-    const latestConversationId = await getRecentConversationId();
-    const latestConversationOnPage = document.location.href.includes(
-      "/c/" + latestConversationId
-    );
-    if (!latestConversationOnPage) {
-      if (isListening) {
-        await checkForNewlyCreatedConversations();
-        checkForNewlyCreatedConversationsInterval = setInterval(
-          checkForNewlyCreatedConversations,
-          2000
-        );
-      } else {
-        clearInterval(checkForNewlyCreatedConversationsInterval);
+    if (!onLatestConversationPage) {
+      const latestConversationId = await getRecentConversationId();
+      const latestConversationOnPage = document.location.href.includes(
+        "/c/" + latestConversationId
+      );
+      if (!latestConversationOnPage) {
+        if (isListening) {
+          await chrome.storage.sync.set({ onLatestConversationPage: false });
+          await checkForNewlyCreatedConversations();
+          checkForNewlyCreatedConversationsInterval = setInterval(
+            checkForNewlyCreatedConversations,
+            2000
+          );
+        } else {
+          clearInterval(checkForNewlyCreatedConversationsInterval);
+        }
+        return;
       }
-      return;
+    }
+
+    if (!onLatestConversationPage) {
+      onLatestConversationPage = true;
+      await chrome.storage.sync.set({ onLatestConversationPage: true });
     }
 
     const articles = document.querySelectorAll("article h6");
@@ -301,7 +311,7 @@ function addListeningButton() {
     const newMessage = await retrieveLastConversation();
     console.log("New message: ", newMessage);
     console.log("Last message: ", lastMessage);
-    if (newMessage == lastMessage) {
+    if (newMessage.includes(lastMessage)) {
       return;
     }
     lastMessage = newMessage;
