@@ -134,15 +134,6 @@ async function checkForNewConversations() {
   }
 }
 
-async function conversationRechecker() {
-  setInterval(async () => {
-    if (!onLatestConversationPage) {
-      console.log("Checking for new conversations...");
-      await checkForNewConversations();
-    }
-  }, 2000);
-}
-
 async function getRecentConversationId() {
   const res = await fetch(
     "https://chatgpt.com/backend-api/conversations?offset=0&limit=1&order=updated",
@@ -300,27 +291,42 @@ function addListeningButton() {
       await chrome.storage.sync.set({ onLatestConversationPage: true });
     }
 
-    const articles = document.querySelectorAll("article h6");
-    const lastArticle = articles[articles.length - 1];
-    if (!lastArticle?.parentElement?.querySelector("p")) {
-      console.warn("Could not find last message content");
-      return;
-    }
-    lastMessage = lastArticle.parentElement.querySelector("p")?.innerHTML || "";
+    await latestConversationChecker();
 
-    const newMessage = await retrieveLastConversation();
-    console.log("New message: ", newMessage);
-    console.log("Last message: ", lastMessage);
-    if (newMessage.includes(lastMessage)) {
-      return;
+    if (isListening) {
+      latestConversationCheckerInterval = setInterval(
+        latestConversationChecker,
+        2000
+      );
+    } else {
+      clearInterval(latestConversationCheckerInterval);
     }
-    lastMessage = newMessage;
-    addNewChatFromGPT(newMessage);
-    updateListeningIcon(newButtonText);
   });
   sendButtonContainer.parentElement?.appendChild(newButton);
 
   console.log("Listening button added");
+}
+
+let latestConversationCheckerInterval: NodeJS.Timeout;
+
+async function latestConversationChecker() {
+  console.log("Checking latest conversation");
+  const articles = document.querySelectorAll("article h6");
+  const lastArticle = articles[articles.length - 1];
+  if (!lastArticle?.parentElement?.querySelector("p")) {
+    console.warn("Could not find last message content");
+    return;
+  }
+  lastMessage = lastArticle.parentElement.querySelector("p")?.innerHTML || "";
+
+  const newMessage = await retrieveLastConversation();
+  console.log("New message: ", newMessage);
+  console.log("Last message: ", lastMessage);
+  if (newMessage.includes(lastMessage)) {
+    return;
+  }
+  lastMessage = newMessage;
+  await addNewChatFromGPT(newMessage);
 }
 
 async function addNewChatFromGPT(newText: string) {
