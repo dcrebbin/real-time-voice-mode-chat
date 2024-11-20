@@ -117,24 +117,7 @@ async function init() {
   addListeningButton();
 }
 
-async function checkForNewConversations() {
-  const recentConversationId = await getRecentConversationId();
-  const recentConversationElement = document.querySelector(
-    `a[href='/c/${recentConversationId}']`
-  );
-  if (recentConversationElement) {
-    const onRecentConversationPage = document.location.href.includes(
-      "/c/" + recentConversationId
-    );
-    if (!onRecentConversationPage) {
-      console.log("New conversation found - navigating to it");
-      chrome.storage.local.set({ onLatestConversationPage: true });
-      window.location.href = `/c/${recentConversationId}`;
-    }
-  }
-}
-
-async function getRecentConversationId() {
+async function getRecentConversation() {
   const res = await fetch(
     "https://chatgpt.com/backend-api/conversations?offset=0&limit=1&order=updated",
     {
@@ -150,7 +133,19 @@ async function getRecentConversationId() {
   }
 
   const data = await res.json();
-  return data.items[0].id;
+
+  const latestConversation = data.items[0];
+
+  const createdTime = new Date(latestConversation.create_time);
+  const now = new Date();
+  const timeDifference = now.getTime() - createdTime.getTime();
+  const minutesDifference = Math.floor(timeDifference / 60000);
+
+  return {
+    id: latestConversation.id,
+    createdTime: createdTime,
+    minutesDifference: minutesDifference,
+  };
 }
 
 async function retrieveLastConversation() {
@@ -183,7 +178,8 @@ async function retrieveLastConversation() {
   const entries = Object.entries(filteredMapping);
   const lastEntry: [string, any] = entries[entries.length - 1];
   const entry = lastEntry[1][1];
-  const message = entry.message.content.parts[0].text;
+  const message =
+    entry.message.content?.parts[0]?.text || entry.message.content.parts[0];
   return message;
 }
 
@@ -218,10 +214,15 @@ function updateListeningIcon(iconElement: HTMLElement) {
 async function checkForNewlyCreatedConversations() {
   console.log("Checking for newly created conversations");
   const currentConversationId = document.location.href.split("/c/")[1];
-  const latestConversationId = await getRecentConversationId();
-  if (latestConversationId !== currentConversationId) {
+  const latestConversation = await getRecentConversation();
+
+  if (
+    latestConversation &&
+    latestConversation.id !== currentConversationId &&
+    latestConversation.minutesDifference < 5
+  ) {
     await chrome.storage.sync.set({ onLatestConversationPage: true });
-    window.location.href = `/c/${latestConversationId}`;
+    window.location.href = `/c/${latestConversation.id}`;
     return;
   }
 }
@@ -267,9 +268,12 @@ function addListeningButton() {
     }
 
     if (!onLatestConversationPage) {
-      const latestConversationId = await getRecentConversationId();
+      const latestConversation = await getRecentConversation();
+      if (!latestConversation) {
+        return;
+      }
       const latestConversationOnPage = document.location.href.includes(
-        "/c/" + latestConversationId
+        "/c/" + latestConversation.id
       );
       if (!latestConversationOnPage) {
         if (isListening) {
@@ -309,6 +313,18 @@ function addListeningButton() {
 
 let latestConversationCheckerInterval: NodeJS.Timeout;
 
+function sanitizeMessage(message: string) {
+  return message
+    .replaceAll("`", "")
+    .replace("ChatGPT said:", "")
+    .replace("ChatGPT", "")
+    .replaceAll("4o", "")
+    .replaceAll("4o-mini", "")
+    .replace("Copy code", "")
+    .replace(/ /g, "")
+    .replace(/[^a-zA-Z]/g, "");
+}
+
 async function latestConversationChecker() {
   console.log("Checking latest conversation");
   const articles = document.querySelectorAll("article h6");
@@ -317,12 +333,27 @@ async function latestConversationChecker() {
     console.warn("Could not find last message content");
     return;
   }
-  lastMessage = lastArticle.parentElement.querySelector("p")?.innerHTML || "";
+  lastMessage = lastArticle.parentElement.innerText || "";
 
   const newMessage = await retrieveLastConversation();
+  if (!newMessage) {
+    console.warn("Could not retrieve new message");
+    return;
+  }
   console.log("New message: ", newMessage);
   console.log("Last message: ", lastMessage);
-  if (newMessage.includes(lastMessage)) {
+  const sanitizedNewMessage = sanitizeMessage(newMessage);
+  const sanitizedLastMessage = sanitizeMessage(lastMessage);
+
+  console.log("Sanitized new message: ", sanitizedNewMessage);
+  console.log("Sanitized last message: ", sanitizedLastMessage);
+
+  console.log(
+    "Sanitized new message === sanitized last message: ",
+    sanitizedNewMessage === sanitizedLastMessage
+  );
+  if (sanitizedNewMessage === sanitizedLastMessage) {
+    console.log("No new message");
     return;
   }
   lastMessage = newMessage;
