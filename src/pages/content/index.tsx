@@ -104,6 +104,16 @@ async function getSavedStorageSettings() {
   onLatestConversationPage =
     Boolean(settings.onLatestConversationPage) || false;
 
+  const latestConversation = await getRecentConversation();
+  const currentConversationId = document.location.href.split("/c/")[1];
+  if (latestConversation?.id === currentConversationId) {
+    isListening = true;
+    await latestConversationChecker();
+    latestConversationCheckerInterval = setInterval(
+      latestConversationChecker,
+      2000
+    );
+  }
   console.log("Settings: ", settings);
 }
 
@@ -219,7 +229,7 @@ async function checkForNewlyCreatedConversations() {
   if (
     latestConversation &&
     latestConversation.id !== currentConversationId &&
-    latestConversation.minutesDifference < 5
+    latestConversation.minutesDifference < 1
   ) {
     await chrome.storage.sync.set({ onLatestConversationPage: true });
     window.location.href = `/c/${latestConversation.id}`;
