@@ -113,13 +113,7 @@ async function init() {
   if (authToken === "") {
     await requestAuthToken();
   }
-  const currentConversationId = document.location.href.split("/c/")[1];
-  const latestConversationId = await getRecentConversationId();
-  if (latestConversationId !== currentConversationId) {
-    await chrome.storage.sync.set({ onLatestConversationPage: true });
-    window.location.href = `/c/${latestConversationId}`;
-    return;
-  }
+
   addListeningButton();
 }
 
@@ -230,6 +224,19 @@ function updateListeningIcon(iconElement: HTMLElement) {
   iconElement.innerHTML = isListening ? "🔊" : "🔇";
 }
 
+async function checkForNewlyCreatedConversations() {
+  console.log("Checking for newly created conversations");
+  const currentConversationId = document.location.href.split("/c/")[1];
+  const latestConversationId = await getRecentConversationId();
+  if (latestConversationId !== currentConversationId) {
+    await chrome.storage.sync.set({ onLatestConversationPage: true });
+    window.location.href = `/c/${latestConversationId}`;
+    return;
+  }
+}
+
+let checkForNewlyCreatedConversationsInterval: NodeJS.Timeout;
+
 function addListeningButton() {
   const sendButton = document.querySelector(
     "button[aria-label='Search the web']"
@@ -241,7 +248,6 @@ function addListeningButton() {
     return;
   }
   const newButton = sendButton.cloneNode(true) as HTMLElement;
-  isListening = onLatestConversationPage;
   newButton.style.opacity = "1";
   newButton.removeAttribute("disabled");
   newButton.style.fontSize = "large";
@@ -250,10 +256,37 @@ function addListeningButton() {
   updateListeningIcon(newButtonText);
   newButton.appendChild(newButtonText);
   newButton.addEventListener("click", async () => {
-    const currentConversationId = !document.location.href.split("/c/")[1];
+    isListening = !isListening;
+    const currentConversationId = document.location.href.split("/c/")[1];
+    updateListeningIcon(newButtonText);
 
     if (!currentConversationId) {
-      void conversationRechecker();
+      if (isListening) {
+        await checkForNewlyCreatedConversations();
+        checkForNewlyCreatedConversationsInterval = setInterval(
+          checkForNewlyCreatedConversations,
+          2000
+        );
+      } else {
+        clearInterval(checkForNewlyCreatedConversationsInterval);
+      }
+      return;
+    }
+
+    const latestConversationId = await getRecentConversationId();
+    const latestConversationOnPage = document.location.href.includes(
+      "/c/" + latestConversationId
+    );
+    if (!latestConversationOnPage) {
+      if (isListening) {
+        await checkForNewlyCreatedConversations();
+        checkForNewlyCreatedConversationsInterval = setInterval(
+          checkForNewlyCreatedConversations,
+          2000
+        );
+      } else {
+        clearInterval(checkForNewlyCreatedConversationsInterval);
+      }
       return;
     }
 
@@ -265,7 +298,6 @@ function addListeningButton() {
     }
     lastMessage = lastArticle.parentElement.querySelector("p")?.innerHTML || "";
 
-    isListening = !isListening;
     const newMessage = await retrieveLastConversation();
     console.log("New message: ", newMessage);
     console.log("Last message: ", lastMessage);
@@ -277,6 +309,7 @@ function addListeningButton() {
     updateListeningIcon(newButtonText);
   });
   sendButtonContainer.parentElement?.appendChild(newButton);
+
   console.log("Listening button added");
 }
 
