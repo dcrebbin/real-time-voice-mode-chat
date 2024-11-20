@@ -29,6 +29,9 @@ importers:
       '@vanilla-extract/vite-plugin':
         specifier: ^4.0.17
         version: 4.0.17(@types/node@18.19.39)(vite@4.5.3(@types/node@18.19.39))
+      highlight.js:
+        specifier: ^11.10.0
+        version: 11.10.0
       markdown-to-html:
         specifier: ^0.0.13
         version: 0.0.13
@@ -38,6 +41,9 @@ importers:
       marked:
         specifier: ^15.0.1
         version: 15.0.1
+      marked-highlight:
+        specifier: ^2.2.1
+        version: 2.2.1(marked@15.0.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -1968,6 +1974,10 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
+  highlight.js@11.10.0:
+    resolution: {integrity: sha512-SYVnVFswQER+zu1laSya563s+F8VDGt7o35d4utbamowvUNLLMovFqwCLSocpZTz3MgaSRA1IbqRWZv97dtErQ==}
+    engines: {node: '>=12.0.0'}
+
   htmlparser2@8.0.2:
     resolution: {integrity: sha512-GYdjWKDkbRLkZ5geuHs5NY1puJ+PXwP7+fHPRz06Eirsb9ugf6d8kkXav6ADhcODhFFPMIXyxkxSuMf3D6NCFA==}
 
@@ -2304,6 +2314,11 @@ packages:
     engines: {node: '>= 10'}
     peerDependencies:
       react: '>= 0.14.0'
+
+  marked-highlight@2.2.1:
+    resolution: {integrity: sha512-SiCIeEiQbs9TxGwle9/OwbOejHCZsohQRaNTY2u8euEXYt2rYUFoiImUirThU3Gd/o6Q1gHGtH9qloHlbJpNIA==}
+    peerDependencies:
+      marked: '>=4 <16'
 
   marked@0.3.19:
     resolution: {integrity: sha512-ea2eGWOqNxPcXv8dyERdSr/6FmzvWwzjMxpfGB/sbMccXoct+xY+YukPD+QTUZwyvK7BZwcr4m21WBOW41pAkg==}
@@ -5210,6 +5225,8 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
+  highlight.js@11.10.0: {}
+
   htmlparser2@8.0.2:
     dependencies:
       domelementtype: 2.3.0
@@ -5524,6 +5541,10 @@ snapshots:
   markdown-to-jsx@7.6.2(react@18.3.1):
     dependencies:
       react: 18.3.1
+
+  marked-highlight@2.2.1(marked@15.0.1):
+    dependencies:
+      marked: 15.0.1
 
   marked@0.3.19: {}
 
