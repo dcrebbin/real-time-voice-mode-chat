@@ -8,6 +8,7 @@ const COPY_ICON = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           </svg>`;
 let isListening = false;
 let authToken = "";
+let onLatestConversationPage = false;
 let lastMessage = "";
 
 async function convertMarkdownToHTML(content: string, index: number) {
@@ -94,10 +95,77 @@ async function convertMarkdownToHTML(content: string, index: number) {
   return marked.parse(content);
 }
 
+async function getSavedStorageSettings() {
+  const settings = await chrome.storage.sync.get([
+    "authToken",
+    "onLatestConversationPage",
+  ]);
+  authToken = settings.authToken || "";
+  onLatestConversationPage =
+    Boolean(settings.onLatestConversationPage) || false;
+
+  console.log("Settings: ", settings);
+}
+
 async function init() {
   console.log("Initializing content");
-  requestAuthToken();
+  await getSavedStorageSettings();
+  if (authToken === "") {
+    await requestAuthToken();
+  }
+  const currentConversationId = document.location.href.split("/c/")[1];
+  const latestConversationId = await getRecentConversationId();
+  if (latestConversationId !== currentConversationId) {
+    await chrome.storage.sync.set({ onLatestConversationPage: true });
+    window.location.href = `/c/${latestConversationId}`;
+    return;
+  }
   addListeningButton();
+}
+
+async function checkForNewConversations() {
+  const recentConversationId = await getRecentConversationId();
+  const recentConversationElement = document.querySelector(
+    `a[href='/c/${recentConversationId}']`
+  );
+  if (recentConversationElement) {
+    const onRecentConversationPage = document.location.href.includes(
+      "/c/" + recentConversationId
+    );
+    if (!onRecentConversationPage) {
+      console.log("New conversation found - navigating to it");
+      chrome.storage.local.set({ onLatestConversationPage: true });
+      window.location.href = `/c/${recentConversationId}`;
+    }
+  }
+}
+
+async function conversationRechecker() {
+  setInterval(async () => {
+    if (!onLatestConversationPage) {
+      console.log("Checking for new conversations...");
+      await checkForNewConversations();
+    }
+  }, 2000);
+}
+
+async function getRecentConversationId() {
+  const res = await fetch(
+    "https://chatgpt.com/backend-api/conversations?offset=0&limit=1&order=updated",
+    {
+      headers: { Authorization: `Bearer ${authToken}` },
+    }
+  );
+
+  if (!res.ok) {
+    console.error("Failed to get recent conversation ID");
+    await requestAuthToken();
+    alert("Failed to get recent conversation ID, auth token may be invalid");
+    return;
+  }
+
+  const data = await res.json();
+  return data.items[0].id;
 }
 
 async function retrieveLastConversation() {
@@ -114,6 +182,12 @@ async function retrieveLastConversation() {
       },
     }
   );
+  if (!res.ok) {
+    console.error("Failed to get latest conversations");
+    alert("Failed to get latest conversations, auth token may be invalid");
+    await requestAuthToken();
+    return;
+  }
   const data = await res.json();
 
   const filteredMapping = Object.entries(data.mapping).filter(
@@ -128,12 +202,15 @@ async function retrieveLastConversation() {
   return message;
 }
 
-function requestAuthToken() {
+async function requestAuthToken() {
   authToken =
     prompt(
-      "Enter your auth token from your the cookie named `__Secure-next-auth.session-token.0` \n" +
+      "Enter your auth token from the cookie named `__Secure-next-auth.session-token.0` \n" +
         "Example: eyJhbGciOiJ... \n"
     ) || "";
+
+  console.log("Auth token: ", authToken);
+  await chrome.storage.sync.set({ authToken });
 }
 
 async function retryListeningButtonAdd(retryCount = 0, maxRetries = 10) {
@@ -164,6 +241,7 @@ function addListeningButton() {
     return;
   }
   const newButton = sendButton.cloneNode(true) as HTMLElement;
+  isListening = onLatestConversationPage;
   newButton.style.opacity = "1";
   newButton.removeAttribute("disabled");
   newButton.style.fontSize = "large";
@@ -172,6 +250,13 @@ function addListeningButton() {
   updateListeningIcon(newButtonText);
   newButton.appendChild(newButtonText);
   newButton.addEventListener("click", async () => {
+    const currentConversationId = !document.location.href.split("/c/")[1];
+
+    if (!currentConversationId) {
+      void conversationRechecker();
+      return;
+    }
+
     const articles = document.querySelectorAll("article h6");
     const lastArticle = articles[articles.length - 1];
     if (!lastArticle?.parentElement?.querySelector("p")) {
@@ -192,6 +277,7 @@ function addListeningButton() {
     updateListeningIcon(newButtonText);
   });
   sendButtonContainer.parentElement?.appendChild(newButton);
+  console.log("Listening button added");
 }
 
 async function addNewChatFromGPT(newText: string) {
@@ -219,14 +305,4 @@ async function addNewChatFromGPT(newText: string) {
   conversationContainer.appendChild(clonedChatContainer);
 }
 
-function initializeContent() {
-  console.log("Initializing content");
-  init();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeContent);
-  console.log("Document loaded");
-} else {
-  initializeContent();
-}
+init();
