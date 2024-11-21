@@ -27,10 +27,11 @@ This allows you to copy code and check what ChatGPT has recently said.
 
 8.  Retrieve your ChatGPT auth cookie\*
 
-    - View > Developer > Developer Tools > Application (tab) > Cookies > \_\_Secure-next-auth.session-token.0
+    - View > Developer > Developer Tools > Network (tab) > Filter > conversations?offset=0 > Copy the authorization header (without Bearer)
+      ![](/assets/tutorial_5.png)
 
 9.  You will now see this button
-    ![](/assets/tutorial_5.png)
+    ![](/assets/tutorial_6.png)
 
     - When the speaker is on the extension will continue to monitor for any new chats made within the last minute
 
