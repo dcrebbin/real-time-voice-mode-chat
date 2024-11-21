@@ -32,7 +32,7 @@ This allows you to copy code and check what ChatGPT has recently said.
 9.  You will now see this button
     ![](/assets/tutorial_5.png)
 
-        - When the speaker is on the extension will continue to monitor for any new chats made within the last minute
+    - When the speaker is on the extension will continue to monitor for any new chats made within the last minute
 
 10. Start a Voice Mode call in ChatGPT Desktop or the mobile app
 
